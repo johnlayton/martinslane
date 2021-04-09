@@ -7,91 +7,71 @@ function confluence-token () {
 }
 
 function confluence-get () {
-  local PTH="" #${1:-""}
-  local QRY="" #${2:-""}
+  local PTH=${1:-""}
+  local QRY=${2:-""}
 
-  if [[ -n "${1}" ]]; then
-    PTH="/${1}"
+  if [[ -n "${PTH}" ]]; then
+    PTH="/${PTH}"
   fi
 
-  if [[ -n "${2}" ]]; then
-    QRY="?${2}"
+  if [[ -n "${QRY}" ]]; then
+    QRY="?${QRY}"
   fi
 
   curl --request GET \
        --silent \
-       --header 'Accept: application/json' \
+       --header "Accept: application/json" \
        --header "Authorization: Basic $( confluence-token )" \
-       "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}"
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}"
 }
 
-
 function confluence-upload () {
-  local PTH="" #${1:-""}
-  local QRY="" #${2:-""}
+  local PATH=${1:-""}
+  local FILE=${2:-""}
 
-  if [[ -n "${1}" ]]; then
-    PTH="/${1}"
+  if [[ -n "${PATH}" ]]; then
+    PATH="/${PATH}"
   fi
-
-  if [[ -n "${2}" ]]; then
-    QRY="?${2}"
-  fi
-
-  local FILE=${3:-""}
 
   curl --request POST \
        --silent \
-       --header 'X-Atlassian-Token: nocheck' \
+       --header "X-Atlassian-Token: nocheck" \
        --header "Authorization: Basic $( confluence-token )" \
-       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PATH}" \
        --form "file=@${FILE}"
 }
 
 function confluence-post () {
-  local PTH="" #${1:-""}
-  local QRY="" #${2:-""}
+  local PATH=${1:-""}
+  local DATA=${2:-"\{\}"}
 
-  if [[ -n "${1}" ]]; then
-    PTH="/${1}"
+  if [[ -n "${PATH}" ]]; then
+    PATH="/${PATH}"
   fi
-
-  if [[ -n "${2}" ]]; then
-    QRY="?${2}"
-  fi
-
-  local DATA=${3:-"\{\}"}
 
   curl --request POST \
        --silent \
-       --header 'Accept: application/json' \
-       --header 'Content-type: application/json' \
+       --header "Accept: application/json" \
+       --header "Content-type: application/json" \
        --header "Authorization: Basic $( confluence-token )" \
-       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PATH}" \
        --data-raw ${DATA}
 }
 
-
 function confluence-put () {
-  local PTH="" #${1:-""}
-  local QRY="" #${2:-""}
+  local PATH=${1:-""}
+  local DATA=${2:-"\{\}"}
 
-  if [[ -n "${1}" ]]; then
-    PTH="/${1}"
+  if [[ -n "${PATH}" ]]; then
+    PATH="/${PATH}"
   fi
-
-  if [[ -n "${2}" ]]; then
-    QRY="?${2}"
-  fi
-
-  local DATA=${3:-"\{\}"}
 
   curl --request PUT \
        --silent \
        --header 'Accept: application/json' \
        --header 'Content-type: application/json' \
        --header "Authorization: Basic $( confluence-token )" \
-       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PATH}" \
        --data-raw ${DATA}
 }
 
@@ -257,8 +237,8 @@ function _confluence::attach () {
     }
   }
 }"
-    confluence-upload "content/${CONTENT_ID}/child/attachment" "" "${FILE}"
-    confluence-put "content/${CONTENT_ID}" "" "${DATA}"
+    confluence-upload "content/${CONTENT_ID}/child/attachment" "${FILE}"
+    confluence-put "content/${CONTENT_ID}" "${DATA}"
   else
     confluence help
   fi
