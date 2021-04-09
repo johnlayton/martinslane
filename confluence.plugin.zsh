@@ -2,6 +2,99 @@
 # Init
 #####################################################################
 
+function confluence-token () {
+  echo $(kscript "println(java.util.Base64.getEncoder().encodeToString(\"${CONFLUENCE_EMAIL}:${CONFLUENCE_TOKEN}\".toByteArray()))")
+}
+
+function confluence-get () {
+  local PTH="" #${1:-""}
+  local QRY="" #${2:-""}
+
+  if [[ -n "${1}" ]]; then
+    PTH="/${1}"
+  fi
+
+  if [[ -n "${2}" ]]; then
+    QRY="?${2}"
+  fi
+
+  curl --request GET \
+       --silent \
+       --header 'Accept: application/json' \
+       --header "Authorization: Basic $( confluence-token )" \
+       "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}"
+}
+
+
+function confluence-upload () {
+  local PTH="" #${1:-""}
+  local QRY="" #${2:-""}
+
+  if [[ -n "${1}" ]]; then
+    PTH="/${1}"
+  fi
+
+  if [[ -n "${2}" ]]; then
+    QRY="?${2}"
+  fi
+
+  local FILE=${3:-""}
+
+  curl --request POST \
+       --silent \
+       --header 'X-Atlassian-Token: nocheck' \
+       --header "Authorization: Basic $( confluence-token )" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}" \
+       --form "file=@${FILE}"
+}
+
+function confluence-post () {
+  local PTH="" #${1:-""}
+  local QRY="" #${2:-""}
+
+  if [[ -n "${1}" ]]; then
+    PTH="/${1}"
+  fi
+
+  if [[ -n "${2}" ]]; then
+    QRY="?${2}"
+  fi
+
+  local DATA=${3:-"\{\}"}
+
+  curl --request POST \
+       --silent \
+       --header 'Accept: application/json' \
+       --header 'Content-type: application/json' \
+       --header "Authorization: Basic $( confluence-token )" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}" \
+       --data-raw ${DATA}
+}
+
+
+function confluence-put () {
+  local PTH="" #${1:-""}
+  local QRY="" #${2:-""}
+
+  if [[ -n "${1}" ]]; then
+    PTH="/${1}"
+  fi
+
+  if [[ -n "${2}" ]]; then
+    QRY="?${2}"
+  fi
+
+  local DATA=${3:-"\{\}"}
+
+  curl --request PUT \
+       --silent \
+       --header 'Accept: application/json' \
+       --header 'Content-type: application/json' \
+       --header "Authorization: Basic $( confluence-token )" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}${QRY}" \
+       --data-raw ${DATA}
+}
+
 function confluence () {
   [[ $# -gt 0 ]] || {
     _confluence::help
@@ -24,6 +117,7 @@ function _confluence {
   cmds=(
     'help:Usage information'
     'init:Initialisation information'
+    'user:Manage user'
   )
 
   if (( CURRENT == 2 )); then
@@ -49,6 +143,10 @@ Available commands:
 
   help
   init
+  user
+  space
+  content
+  attach
 
 EOF
 }
@@ -69,5 +167,99 @@ function _confluence::init {
     echo "CONFLUENCE_TOKEN=<token>"
     echo "============================================="
     open "https://id.atlassian.com/manage-profile/security/api-tokens"
+  fi
+}
+
+function _confluence::user () {
+  confluence-get "user/current" "expand=personalSpace"
+}
+
+function _confluence::space () {
+  confluence-get "space/${1:-$(confluence user | jq -r ".personalSpace.key")}" "expand=homepage,homepage.descendants,homepage.descendants.page,homepage.descendants.page.version,settings"
+}
+
+function _confluence::content () {
+  local TITLE=${1:-""}
+  local PARENT=${2:-""}
+  local TEXT=${3:-""}
+
+  local SPACE=$(confluence space)
+
+  if [ $# -eq 1 ]; then
+    local CONTENT_ID=$(echo ${SPACE} | jq -r ".homepage.descendants.page.results[] | select(.title == \"$TITLE\")" | jq -r ".id")
+    confluence-get "content/${CONTENT_ID}" "expand=body.view"
+  elif [ $# -eq 3 ]; then
+    local SPACE_KEY=$(echo ${SPACE} | jq -r ".key")
+    local CONTENT_ID=$(echo ${SPACE} | jq -r ".homepage.descendants.page.results[] | select(.title == \"$PARENT\")" | jq -r ".id")
+    local DATA="{
+  \"title\": \"${TITLE}\",
+  \"type\": \"page\",
+  \"space\": {
+    \"key\": \"${SPACE_KEY}\"
+  },
+  \"status\": \"current\",
+  \"ancestors\": [
+    {
+      \"id\": \"${CONTENT_ID}\"
+    }
+  ],
+  \"body\": {
+    \"storage\": {
+      \"value\": \"${TEXT}\",
+      \"representation\": \"storage\"
+    }
+  }
+}"
+    confluence-post "content" "" "${DATA}"
+  else
+    confluence help
+  fi
+}
+
+function _confluence::attach () {
+  local TITLE=${1:-""}
+  local FILE=${2:-""}
+
+  local SPACE=$(confluence space)
+  local CONTENT=$(echo ${SPACE} | jq -r ".homepage.descendants.page.results[] | select(.title == \"$TITLE\")")
+  local CONTENT_ID=$(echo ${CONTENT} | jq -r ".id")
+
+  if [ $# -eq 1 ]; then
+    confluence-get "content/${CONTENT_ID}" "expand=body.view"
+  elif [ $# -eq 2 ]; then
+    local VERSION_NUMBER=$(echo ${CONTENT} | jq -r ".version.number")
+    local EMBED_TEXT="<p> \
+  <span class=\\\"confluence-embedded-file-wrapper confluence-embedded-manual-size\\\"> \
+    <img class=\\\"confluence-embedded-image\\\" \
+         src=\\\"https:\\/\\/whispir.atlassian.net\\/wiki\\/download\\/thumbnails\\/${CONTENT_ID}\\/${FILE}\\\" \
+         data-image-src=\\\"https:\\/\\/whispir.atlassian.net\\/wiki\\/download\\/attachments\\/${CONTENT_ID}\\/${FILE}\\\" \
+         data-unresolved-comment-count=\\\"0\\\" \
+         data-linked-resource-type=\\\"attachment\\\" \
+         data-linked-resource-default-alias=\\\"${FILE}\\\" \
+         data-base-url=\\\"https:\\/\\/whispir.atlassian.net\\/wiki\\\" \
+         data-linked-resource-content-type=\\\"image\\/gif\\\" \
+         data-linked-resource-container-id=\\\"${CONTENT_ID}\\\" \
+         data-linked-resource-container-version=\\\"$((${VERSION_NUMBER} + 1))\\\" \
+         data-media-type=\\\"file\\\"\\/> \
+   <\\/span> \
+<\\/p>"
+    local DATA="{
+  \"title\": \"${TITLE}\",
+  \"type\": \"page\",
+  \"version\": {
+    \"number\": \"$((${VERSION_NUMBER} + 1))\"
+  },
+  \"type\": \"page\",
+  \"body\": {
+    \"storage\": {
+      \"value\": \"${EMBED_TEXT}\",
+      \"representation\": \"storage\"
+    }
+  }
+}"
+    confluence-upload "content/${CONTENT_ID}/child/attachment" "" "${FILE}"
+    confluence-put "content/${CONTENT_ID}" "" "${DATA}"
+  else
+    confluence help
   fi
 }
