@@ -3,7 +3,9 @@
 #####################################################################
 
 function confluence-token () {
-  echo $(kscript "println(java.util.Base64.getEncoder().encodeToString(\"${CONFLUENCE_EMAIL}:${CONFLUENCE_TOKEN}\".toByteArray()))")
+#  kscript "println(java.util.Base64.getEncoder().encodeToString(\"${CONFLUENCE_EMAIL}:${CONFLUENCE_TOKEN}\".toByteArray()))"
+#  echo -n $(kscript "println(java.util.Base64.getEncoder().encodeToString(\"${CONFLUENCE_EMAIL}:${CONFLUENCE_TOKEN}\".toByteArray()))")
+  echo -n "${CONFLUENCE_EMAIL}:${CONFLUENCE_TOKEN}" | base64 -
 }
 
 function confluence-get () {
@@ -26,27 +28,27 @@ function confluence-get () {
 }
 
 function confluence-upload () {
-  local PATH=${1:-""}
+  local PTH=${1:-""}
   local FILE=${2:-""}
 
-  if [[ -n "${PATH}" ]]; then
-    PATH="/${PATH}"
+  if [[ -n "${PTH}" ]]; then
+    PTH="/${PTH}"
   fi
 
   curl --request POST \
        --silent \
        --header "X-Atlassian-Token: nocheck" \
        --header "Authorization: Basic $( confluence-token )" \
-       --url "${CONFLUENCE_API_ENDPOINT}${PATH}" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}" \
        --form "file=@${FILE}"
 }
 
 function confluence-post () {
-  local PATH=${1:-""}
-  local DATA=${2:-"\{\}"}
+  local PTH=${1:-""}
+  local DATA=${2:-""}
 
-  if [[ -n "${PATH}" ]]; then
-    PATH="/${PATH}"
+  if [[ -n "${PTH}" ]]; then
+    PTH="/${PTH}"
   fi
 
   curl --request POST \
@@ -54,16 +56,16 @@ function confluence-post () {
        --header "Accept: application/json" \
        --header "Content-type: application/json" \
        --header "Authorization: Basic $( confluence-token )" \
-       --url "${CONFLUENCE_API_ENDPOINT}${PATH}" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}" \
        --data-raw ${DATA}
 }
 
 function confluence-put () {
-  local PATH=${1:-""}
-  local DATA=${2:-"\{\}"}
+  local PTH=${1:-""}
+  local DATA=${2:-""}
 
-  if [[ -n "${PATH}" ]]; then
-    PATH="/${PATH}"
+  if [[ -n "${PTH}" ]]; then
+    PTH="/${PTH}"
   fi
 
   curl --request PUT \
@@ -71,7 +73,7 @@ function confluence-put () {
        --header 'Accept: application/json' \
        --header 'Content-type: application/json' \
        --header "Authorization: Basic $( confluence-token )" \
-       --url "${CONFLUENCE_API_ENDPOINT}${PATH}" \
+       --url "${CONFLUENCE_API_ENDPOINT}${PTH}" \
        --data-raw ${DATA}
 }
 
@@ -190,7 +192,7 @@ function _confluence::content () {
     }
   }
 }"
-    confluence-post "content" "" "${DATA}"
+    confluence-post "content" "${DATA}"
   else
     confluence help
   fi
