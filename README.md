@@ -5,23 +5,23 @@
 #### Install confluence plugin
 ```zsh
 pushd $ZSH/custom/plugins && \
-  git clone git@github.com:johnlayton/martinslane.git confluence && \
+    git clone git@github.com:johnlayton/martinslane.git martinslane && \
   popd || echo "I'm broken"
 ```
 ```zsh
-plugins=(... buildkite)
+plugins=(... martinslane)
 ```
 
 ### Setup other
 
 ```zsh
 pushd $HOME && \
-  git clone git@github.com:johnlayton/martinslane.git .confluence && \
+  git clone git@github.com:johnlayton/martinslane.git .martinslane && \
   popd || echo "I'm broken"
 ```
 
 ```zsh
-source ~/.confluence/confluence.plugin.zsh
+source ~/.martinslane/martinslane.plugin.zsh
 ```
 
 
