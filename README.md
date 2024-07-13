@@ -1,8 +1,8 @@
-## confluence
+## martinslane
 
 ### Setup oh-my-zsh
 
-#### Install confluence plugin
+#### Install martinslane plugin
 ```zsh
 pushd $ZSH/custom/plugins && \
     git clone git@github.com:johnlayton/martinslane.git martinslane && \
